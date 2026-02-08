@@ -225,14 +225,15 @@ Each pipeline can be evaluated on benchmark questions with:
 
 ## Citation
 
-If you use this implementation in your research, please cite:
+If you use this implementation in your research, please cite the original RLM paper:
 
 ```bibtex
-@software{rlm_rag_comparison,
-  title={Deep Doc: Comparative Analysis of RAG and RLM Approaches},
-  author={Your Name},
-  year={2026},
-  url={https://github.com/yourusername/RLM-RAG}
+@article{zhang2025recursive,
+  title={Recursive Language Models},
+  author={Zhang, Alex and Kraska, Tim and Khattab, Omar},
+  journal={arXiv preprint arXiv:2512.24601},
+  year={2025},
+  url={https://arxiv.org/abs/2512.24601}
 }
 ```
 
