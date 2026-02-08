@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Doc — RAG vs Google RAG vs RLM</title>
+    <meta name="description"
+        content="Compare three document intelligence approaches side-by-side: Normal RAG, Google File Search, and Recursive Language Models.">
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=cal-sans@1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header id="app-header">
+        <div class="header-glow"></div>
+        <h1>
+            Deep Doc
+        </h1>
+        <p class="subtitle">Upload a PDF · Ask a question · Compare three RAG approaches side-by-side</p>
+        <div class="pipeline-badges">
+            <span class="badge badge-blue">Normal RAG</span>
+            <span class="badge badge-green">Google RAG</span>
+            <span class="badge badge-purple">RLM</span>
+        </div>
+    </header>
+
+    <!-- ═══════════════ MODE TABS ═══════════════ -->
+    <section id="mode-tabs">
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tab-upload" onclick="switchTab('upload')">
+                Upload Your PDF
+            </button>
+            <button class="tab-btn" id="tab-benchmark" onclick="switchTab('benchmark')">
+                Benchmark (3,045 Questions)
+            </button>
+        </div>
+    </section>
+
+    <!-- ═══════════════ UPLOAD TAB ═══════════════ -->
+    <section id="upload-section">
+        <div class="upload-area" id="upload-area">
+            <div class="upload-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="12" y2="12"></line>
+                    <line x1="15" y1="15" x2="12" y2="12"></line>
+                </svg>
+            </div>
+            <h3>Drop your PDF here</h3>
+            <p>or click to browse</p>
+            <input type="file" id="file-input" accept=".pdf" hidden>
+        </div>
+        <div id="upload-status" class="status-panel hidden">
+            <div class="status-header">
+                <span class="spinner hidden" id="upload-spinner"></span>
+                <span id="status-filename"></span>
+            </div>
+            <div id="pipeline-statuses"></div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ BENCHMARK TAB ═══════════════ -->
+    <section id="benchmark-section" class="hidden">
+        <!-- Stats bar -->
+        <div class="bench-stats" id="bench-stats">
+            <div class="stat-chip"><span class="stat-label">Total Queries</span><span class="stat-value"
+                    id="stat-total">—</span></div>
+            <div class="stat-chip"><span class="stat-label">PDFs</span><span class="stat-value" id="stat-pdfs">—</span>
+            </div>
+            <div class="stat-chip"><span class="stat-label">Abstractive</span><span class="stat-value"
+                    id="stat-abstractive">—</span></div>
+            <div class="stat-chip"><span class="stat-label">Extractive</span><span class="stat-value"
+                    id="stat-extractive">—</span></div>
+            <div class="stat-chip"><span class="stat-label">Text</span><span class="stat-value" id="stat-text">—</span>
+            </div>
+            <div class="stat-chip"><span class="stat-label">Text + Image</span><span class="stat-value"
+                    id="stat-text-image">—</span></div>
+            <div class="stat-chip"><span class="stat-label">Text + Table</span><span class="stat-value"
+                    id="stat-text-table">—</span></div>
+            <div class="stat-chip"><span class="stat-label">Text + Table + Image</span><span class="stat-value"
+                    id="stat-text-table-image">—</span></div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bench-filters">
+            <select id="bench-filter-type" onchange="loadBenchQuestions()">
+                <option value="">All Types</option>
+                <option value="abstractive">Abstractive</option>
+                <option value="extractive">Extractive</option>
+            </select>
+            <select id="bench-filter-source" onchange="loadBenchQuestions()">
+                <option value="">All Sources</option>
+                <option value="text">Text Only</option>
+                <option value="text-image">Text + Image</option>
+                <option value="text-table">Text + Table</option>
+                <option value="text-table-image">Text + Table + Image</option>
+            </select>
+            <button class="bench-btn" onclick="loadBenchQuestions(true)">Shuffle</button>
+        </div>
+
+        <!-- Questions list -->
+        <div class="bench-questions" id="bench-questions">
+            <p class="bench-placeholder">Loading benchmark questions…</p>
+        </div>
+
+        <!-- Status panel for benchmark loading -->
+        <div id="bench-load-status" class="status-panel hidden">
+            <div class="status-header">
+                <span class="spinner hidden" id="bench-spinner"></span>
+                <span id="bench-status-text"></span>
+            </div>
+            <div id="bench-pipeline-statuses"></div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ QUERY SECTION ═══════════════ -->
+    <section id="query-section" class="hidden">
+        <div class="query-bar">
+            <input type="text" id="question-input" placeholder="Ask anything about the document…" autocomplete="off">
+            <button id="query-btn" onclick="runAllPipelines()">
+                <span class="btn-text">Run All Three</span>
+                <span class="btn-spinner hidden"></span>
+            </button>
+        </div>
+    </section>
+
+    <!-- ═══════════════ GROUND TRUTH (benchmark only) ═══════════════ -->
+    <section id="ground-truth-section" class="hidden">
+        <div class="ground-truth-card">
+            <div class="gt-header">
+                <span class="gt-icon"></span>
+                <h3>Ground Truth Answer</h3>
+                <div class="gt-meta">
+                    <span class="gt-badge" id="gt-type"></span>
+                    <span class="gt-badge" id="gt-source"></span>
+                    <span class="gt-badge" id="gt-doc"></span>
+                </div>
+            </div>
+            <div class="gt-answer" id="gt-answer"></div>
+        </div>
+    </section>
+    <!-- ═══════════════ LLM JUDGE (benchmark only) ═══════════════ -->
+    <section id="judge-section" class="hidden">
+        <div class="judge-card">
+            <div class="judge-header">
+                <span class="judge-icon"></span>
+                <h3>LLM Judge — Claude Sonnet</h3>
+                <span class="judge-model" id="judge-model"></span>
+            </div>
+            <div class="judge-loading hidden" id="judge-loading">
+                <div class="pulse-loader"></div>
+                <span>Claude Sonnet is evaluating answers…</span>
+            </div>
+            <div class="judge-results hidden" id="judge-results">
+                <div class="judge-summary" id="judge-summary"></div>
+                <div class="judge-scores" id="judge-scores"></div>
+                <div class="judge-winner" id="judge-winner"></div>
+            </div>
+            <div class="judge-error hidden" id="judge-error"></div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ RESULTS ═══════════════ -->
+    <section id="results-section" class="hidden">
+        <div class="results-grid">
+
+            <!-- NORMAL RAG -->
+            <div class="result-card" id="card-normal_rag">
+                <div class="card-header card-header-blue">
+                    <div class="card-title">Normal RAG</div>
+                    <div class="card-subtitle">Qwen3 · Embeddings · Top-K Retrieval</div>
+                </div>
+                <div class="card-body">
+                    <div class="answer-section">
+                        <h4>Answer</h4>
+                        <div class="answer-text" id="answer-normal_rag">
+                            <span class="placeholder">Waiting for query…</span>
+                        </div>
+                    </div>
+                    <div class="cot-section">
+                        <h4>
+                            Chain of Thought
+                            <button class="toggle-btn" onclick="toggleCoT('normal_rag')">▼</button>
+                        </h4>
+                        <div class="cot-steps" id="cot-normal_rag"></div>
+                    </div>
+                </div>
+                <div class="card-loading hidden" id="loading-normal_rag">
+                    <div class="pulse-loader"></div>
+                    <span>Processing…</span>
+                </div>
+            </div>
+
+            <!-- GOOGLE RAG -->
+            <div class="result-card" id="card-google_rag">
+                <div class="card-header card-header-green">
+                    <div class="card-title">Google RAG</div>
+                    <div class="card-subtitle">Gemini · File Search · Grounding</div>
+                </div>
+                <div class="card-body">
+                    <div class="answer-section">
+                        <h4>Answer</h4>
+                        <div class="answer-text" id="answer-google_rag">
+                            <span class="placeholder">Waiting for query…</span>
+                        </div>
+                    </div>
+                    <div class="cot-section">
+                        <h4>
+                            Chain of Thought
+                            <button class="toggle-btn" onclick="toggleCoT('google_rag')">▼</button>
+                        </h4>
+                        <div class="cot-steps" id="cot-google_rag"></div>
+                    </div>
+                </div>
+                <div class="card-loading hidden" id="loading-google_rag">
+                    <div class="pulse-loader"></div>
+                    <span>Processing…</span>
+                </div>
+            </div>
+
+            <!-- RLM -->
+            <div class="result-card" id="card-rlm">
+                <div class="card-header card-header-purple">
+                    <div class="card-title">RLM (Recursive LM)</div>
+                    <div class="card-subtitle">DSPy · REPL · Sub-LM Calls</div>
+                </div>
+                <div class="card-body">
+                    <div class="answer-section">
+                        <h4>Answer</h4>
+                        <div class="answer-text" id="answer-rlm">
+                            <span class="placeholder">Waiting for query…</span>
+                        </div>
+                    </div>
+                    <div class="cot-section">
+                        <h4>
+                            Chain of Thought
+                            <button class="toggle-btn" onclick="toggleCoT('rlm')">▼</button>
+                        </h4>
+                        <div class="cot-steps" id="cot-rlm"></div>
+                    </div>
+                </div>
+                <div class="card-loading hidden" id="loading-rlm">
+                    <div class="pulse-loader"></div>
+                    <span>Processing…</span>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer>
+        <p>
+            Built with DSPy · Google GenAI · OpenRouter · Flask
+            <br>
+            Benchmark data from <a href="https://github.com/vectara/open-rag-bench" target="_blank">Vectara Open RAG
+                Bench</a>
+            · Based on <a href="https://arxiv.org/abs/2512.24601" target="_blank">Recursive Language Models</a> (Zhang,
+            Kraska, Khattab 2025)
+        </p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

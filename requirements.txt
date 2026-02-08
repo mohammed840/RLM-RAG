@@ -1,0 +1,9 @@
+flask>=3.0.0
+python-multipart>=0.0.12
+reductoai>=1.0.0
+sentence-transformers>=3.0.0
+numpy>=1.26.0
+dspy>=3.1.2
+google-genai>=1.0.0
+openai>=1.50.0
+python-dotenv>=1.0.0
